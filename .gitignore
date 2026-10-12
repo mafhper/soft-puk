@@ -1,0 +1,10 @@
+# Android / Gradle
+.gradle/
+build/
+local.properties
+.idea/
+*.iml
+.kotlin/
+
+# Workspace privado de desenvolvimento (nunca versionado)
+.dev/
