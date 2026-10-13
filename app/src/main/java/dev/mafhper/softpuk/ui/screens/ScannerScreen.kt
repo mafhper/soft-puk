@@ -15,7 +15,9 @@ import android.view.WindowManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.OptIn
 import androidx.camera.core.CameraSelector
+import androidx.camera.core.ExperimentalGetImage
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.Preview
 import androidx.camera.core.resolutionselector.ResolutionSelector
@@ -575,6 +577,9 @@ private fun OcrBand(
     }
 }
 
+// `image.image` (ImageProxy) é API experimental do CameraX — opt-in explícito
+// exigido pelo lint (UnsafeOptInUsageError).
+@OptIn(ExperimentalGetImage::class)
 @Composable
 private fun CameraPreview(
     tracker: CellTracker,

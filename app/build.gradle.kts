@@ -56,6 +56,24 @@ android {
     }
 }
 
+// Dependabot (2026-10-13): a configuração `androidLintTool` (toolchain do lint) traz as
+// MESMAS transitivas com CVE do buildscript (bcprov/bcpkix, commons-lang3, httpclient).
+// Força as versões corrigidas em todas as configurações do módulo — inócuo no runtime,
+// onde nenhuma dessas libs existe. Rastro: SP-N8.
+configurations.configureEach {
+    resolutionStrategy {
+        force(
+            "org.bouncycastle:bcprov-jdk18on:1.85",
+            "org.bouncycastle:bcpkix-jdk18on:1.85",
+            "org.bouncycastle:bcutil-jdk18on:1.85",
+            "org.bitbucket.b_c:jose4j:0.9.6",
+            "org.jdom:jdom2:2.0.6.1",
+            "org.apache.commons:commons-lang3:3.18.0",
+            "org.apache.httpcomponents:httpclient:4.5.14",
+        )
+    }
+}
+
 dependencies {
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.core.ktx)
