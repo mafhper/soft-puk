@@ -24,7 +24,10 @@ fun SoftPukApp() {
     NavHost(navController = nav, startDestination = Routes.SCANNER) {
         composable(Routes.SCANNER) {
             ScannerScreen(
-                onPuzzleReady = { nav.navigate(Routes.CONFIRM) },
+                onPuzzleReady = {
+                    state.loadDemo()
+                    nav.navigate(Routes.CONFIRM)
+                },
                 onPuzzleParsed = { matrix, daemons ->
                     state.loadParsed(matrix, daemons)
                     nav.navigate(Routes.CONFIRM)

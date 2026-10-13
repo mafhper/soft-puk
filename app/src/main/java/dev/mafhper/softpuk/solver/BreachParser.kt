@@ -16,12 +16,38 @@ data class ParsedPuzzle(
     val daemons: List<List<BreachCode>>,
 )
 
+/** Maior grade do jogo (Breach Protocol) — o que passar disso é artefato de leitura. */
+const val MAX_GRID_SIZE = 6
+
+/**
+ * Leitura plausível para confirmar: grade de 2..6 linhas/colunas com daemons.
+ * Blinda a confirmação contra artefatos de rastreio (ex.: coluna duplicada na
+ * troca de puzzle, que produzia grade de 7+ colunas).
+ */
+fun ParsedPuzzle.isPlausible(): Boolean =
+    matrix.size in 2..MAX_GRID_SIZE &&
+        matrix.all { row -> row.size in 2..MAX_GRID_SIZE } &&
+        daemons.isNotEmpty()
+
 /**
  * Reconstrói matriz e daemons a partir das células TRAVADAS (Fatia 3):
  * agrupa por proximidade vertical (linhas), ordena por X dentro da linha e
  * normaliza cada token contra os 6 códigos do jogo com tolerância de 1 edição.
  */
 object BreachParser {
+
+    /**
+     * Palavras do chrome do jogo (PT) que passam no filtro hexadecimal mas não são
+     * códigos: "TEMPO RESTANTE DA BRECHA" ("DA") e "MATRIZ DE CÓDIGOS" ("DE").
+     * Sem o filtro, "DA" normaliza para 7A (1 edição) e suja grade/overlay.
+     */
+    private val NON_CODE_WORDS = setOf("DA", "DE")
+
+    /** Token com cara de código do jogo: par hex com letra (ou 55), sem as palavras do chrome. */
+    fun looksLikeCodeToken(token: String): Boolean =
+        token.length == 2 &&
+            (token == "55" || token.any { it in 'A'..'F' }) &&
+            token !in NON_CODE_WORDS
 
     fun codeFor(token: String): BreachCode? {
         val t = token.uppercase()

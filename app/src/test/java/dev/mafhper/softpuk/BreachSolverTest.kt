@@ -60,12 +60,22 @@ class BreachSolverTest {
         return out
     }
 
-    private fun oracleScore(puzzle: BreachPuzzle, enabled: Set<Int>): Int =
-        allBuffers(puzzle.matrix, puzzle.bufferSize).maxOf { buffer ->
-            enabled
-                .filter { containsRunOracle(buffer, puzzle.daemons[it].codes) }
-                .sumOf { 1 shl it }
-        }
+    /**
+     * Objetivo do solver: MÁXIMO DE DAEMONS primeiro; empate pelo peso 2^índice
+     * (o último vale mais). O conjunto atingido identifica (quantidade, peso) de
+     * forma única (soma de potências de 2 = bitmask).
+     */
+    private fun oracleBest(puzzle: BreachPuzzle, enabled: Set<Int>): Set<Int> {
+        val byObjective = compareBy<Set<Int>>(
+            { set -> set.size },
+            { set -> set.sumOf { 1 shl it } },
+        )
+        return allBuffers(puzzle.matrix, puzzle.bufferSize)
+            .map { buffer ->
+                enabled.filter { containsRunOracle(buffer, puzzle.daemons[it].codes) }.toSet()
+            }
+            .maxWith(byObjective)
+    }
 
     /** Valida as regras de seleção: 1ª na linha 0; alterna coluna/linha; sem reuso; ≤ buffer. */
     private fun validatePicks(
@@ -145,6 +155,27 @@ class BreachSolverTest {
     }
 
     @Test
+    fun maxDaemonsCountBeatsSingleHeavierDaemon() {
+        // Buffer 3 comporta UM caminho que completa V1+V2 (2 daemons, nota 1+2=3)
+        // e outro que completa só V3 (1 daemon, nota 4).
+        // Máximo de daemons primeiro → V1+V2 vence, mesmo com nota menor.
+        val matrix = listOf(
+            listOf(BreachCode.CBD, BreachCode.C7A, BreachCode.C1C),
+            listOf(BreachCode.C55, BreachCode.C1C, BreachCode.CE9),
+            listOf(BreachCode.C7A, BreachCode.CBD, BreachCode.C55),
+        )
+        val daemons = listOf(
+            Daemon("V1", listOf(BreachCode.C1C, BreachCode.C55)),
+            Daemon("V2", listOf(BreachCode.C55, BreachCode.CBD)),
+            Daemon("V3", listOf(BreachCode.CBD, BreachCode.C55, BreachCode.C1C)),
+        )
+        val sol = BreachSolver.solve(BreachPuzzle(matrix, 3, daemons))
+        assertEquals(setOf(0, 1), sol.achieved)
+        assertEquals(3, sol.score)
+        assertEquals(listOf(BreachCode.C1C, BreachCode.C55, BreachCode.CBD), sol.buffer)
+    }
+
+    @Test
     fun bufferTooSmallCannotComplete() {
         val matrix = listOf(
             listOf(BreachCode.C1C, BreachCode.C55),
@@ -182,12 +213,14 @@ class BreachSolverTest {
             val puzzle = BreachPuzzle(matrix, bufferSize, daemons)
             val enabled = daemons.indices.toSet()
             val sol = BreachSolver.solve(puzzle, enabled)
-            assertEquals("score divergente no caso $case", oracleScore(puzzle, enabled), sol.score)
+            val expectedBest = oracleBest(puzzle, enabled)
+            assertEquals("achieved divergente no caso $case", expectedBest, sol.achieved)
+            assertEquals(
+                "score divergente no caso $case",
+                expectedBest.sumOf { 1 shl it },
+                sol.score,
+            )
             assertTrue("picks invalidos no caso $case", validatePicks(matrix, bufferSize, sol.picks))
-            val expectedAchieved = enabled
-                .filter { containsRunOracle(sol.buffer, daemons[it].codes) }
-                .toSet()
-            assertEquals("achieved divergente no caso $case", expectedAchieved, sol.achieved)
         }
     }
 }

@@ -6,5 +6,10 @@ local.properties
 *.iml
 .kotlin/
 
+# Assinatura de release (nunca versionar)
+keystore.properties
+*.jks
+*.keystore
+
 # Workspace privado de desenvolvimento (nunca versionado)
 .dev/

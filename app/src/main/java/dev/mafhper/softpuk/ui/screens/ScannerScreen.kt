@@ -73,15 +73,18 @@ import com.google.mlkit.vision.text.Text
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import dev.mafhper.softpuk.model.BreachCode
+import dev.mafhper.softpuk.scanner.CellDetection
+import dev.mafhper.softpuk.scanner.CellTracker
+import dev.mafhper.softpuk.scanner.OcrLine
 import dev.mafhper.softpuk.solver.BreachParser
 import dev.mafhper.softpuk.solver.ParsedCell
 import dev.mafhper.softpuk.solver.ParsedPuzzle
+import dev.mafhper.softpuk.solver.isPlausible
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
-import kotlin.math.abs
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -89,25 +92,6 @@ import kotlinx.coroutines.withContext
 
 /** Só os códigos interessam: pares hexadecimais de 2 caracteres. */
 private val HEX_PAIR = Regex("\\b[0-9A-F]{2}\\b")
-
-/** Leituras idênticas consecutivas para TRAVAR uma célula (≈ ~3 s no ritmo atual). */
-private const val LOCK_HITS = 5
-
-/** Quadros sem ver a célula até ela sumir do DESENHO (a leitura continua guardada). */
-private const val HIDE_AFTER_FRAMES = 8L
-
-/** Quadros sem ver a célula até DESCARTA-LA de vez (travadas inclusas). */
-private const val DROP_AFTER_FRAMES = 20L
-
-/** Uma célula lida, com a caixa (em coordenadas da imagem) para desenhar sobre o preview. */
-private data class OcrLine(
-    val text: String,
-    val left: Int,
-    val top: Int,
-    val right: Int,
-    val bottom: Int,
-    val locked: Boolean,
-)
 
 private data class OcrRead(
     val imageWidth: Int,
@@ -120,17 +104,6 @@ private data class OcrRead(
     val leftTotal: Int get() = leftLines.size
     val rightTotal: Int get() = rightLines.size
 }
-
-private data class CellDetection(
-    val text: String,
-    val cx: Float,
-    val cy: Float,
-    val left: Int,
-    val top: Int,
-    val right: Int,
-    val bottom: Int,
-    val isLeftRegion: Boolean,
-)
 
 /**
  * Extrai os códigos de um resultado do ML Kit (usado pela mira contínua e pelo
@@ -156,8 +129,9 @@ private fun extractDetections(text: Text, uprightWidth: Int, uprightHeight: Int)
                         tokens = fused.chunked(2)
                     }
                 }
-                // só códigos plausíveis: com letra (1C, 7A, BD, E9, FF…) ou 55.
-                tokens = tokens.filter { token -> token == "55" || token.any { it in 'A'..'F' } }
+                // só códigos plausíveis: com letra (1C, 7A, BD, E9, FF…) ou 55 —
+                // e nunca as palavras dos títulos do jogo (DA/DE).
+                tokens = tokens.filter { token -> BreachParser.looksLikeCodeToken(token) }
                 if (tokens.isEmpty()) continue
                 val count = tokens.size
                 val width = box.width()
@@ -188,115 +162,6 @@ private fun extractDetections(text: Text, uprightWidth: Int, uprightHeight: Int)
 private suspend fun <T> Task<T>.awaitOrThrow(): T = suspendCancellableCoroutine { cont ->
     addOnSuccessListener { value -> cont.resume(value) }
     addOnFailureListener { error -> cont.resumeWithException(error) }
-}
-
-/**
- * Rastreia células entre quadros.
- * - Leitura igual N vezes consecutivas na mesma posição TRAVA a célula.
- * - Célula casa por POSIÇÃO (tolerância); travadas só casam com o MESMO conteúdo.
- * - A posição da célula acompanha o quadro (o overlay anda junto com a tela).
- * - Sem ser vista: some do desenho (~2 s) e é descartada (~5 s) — travadas inclusas.
- */
-private class CellTracker {
-    private class Cell(
-        var text: String,
-        var hits: Int,
-        var cx: Float,
-        var cy: Float,
-        var left: Int,
-        var top: Int,
-        var right: Int,
-        var bottom: Int,
-        val isLeftRegion: Boolean,
-        var locked: Boolean,
-        var lastSeen: Long,
-    )
-
-    private val cells = mutableListOf<Cell>()
-    private var frame = 0L
-
-    fun update(
-        detections: List<CellDetection>,
-        tolX: Float,
-        tolY: Float,
-    ): Pair<List<OcrLine>, List<OcrLine>> {
-        frame++
-        // IMPORTANTE: `used` acompanha o tamanho de `cells` (que cresce no loop).
-        val used = MutableList(cells.size) { false }
-        for (d in detections) {
-            var bestIndex = -1
-            var bestDist = Float.MAX_VALUE
-            for (i in cells.indices) {
-                if (used[i]) continue
-                val c = cells[i]
-                if (c.isLeftRegion != d.isLeftRegion) continue
-                val dx = abs(c.cx - d.cx)
-                val dy = abs(c.cy - d.cy)
-                if (dx < tolX && dy < tolY) {
-                    // travada só casa com o MESMO conteúdo (não "cola" em outra célula)
-                    if (c.locked && c.text != d.text) continue
-                    val dist = dx + dy
-                    if (dist < bestDist) {
-                        bestDist = dist
-                        bestIndex = i
-                    }
-                }
-            }
-            if (bestIndex >= 0) {
-                used[bestIndex] = true
-                val c = cells[bestIndex]
-                c.lastSeen = frame
-                // posição SEMPRE acompanha o quadro; conteúdo só muda enquanto solta.
-                c.cx = d.cx
-                c.cy = d.cy
-                c.left = d.left
-                c.top = d.top
-                c.right = d.right
-                c.bottom = d.bottom
-                if (!c.locked) {
-                    if (d.text == c.text) {
-                        c.hits++
-                    } else {
-                        c.text = d.text
-                        c.hits = 1
-                    }
-                    if (c.hits >= LOCK_HITS) c.locked = true
-                }
-            } else {
-                used.add(true)
-                cells.add(
-                    Cell(
-                        text = d.text,
-                        hits = 1,
-                        cx = d.cx,
-                        cy = d.cy,
-                        left = d.left,
-                        top = d.top,
-                        right = d.right,
-                        bottom = d.bottom,
-                        isLeftRegion = d.isLeftRegion,
-                        locked = false,
-                        lastSeen = frame,
-                    ),
-                )
-            }
-        }
-
-        // desenha só o que foi visto recentemente; o resto some do overlay.
-        val visible = cells.filter { frame - it.lastSeen <= HIDE_AFTER_FRAMES }
-        // descarta o que sumiu por completo (a leitura não é eterna).
-        cells.removeAll { frame - it.lastSeen > DROP_AFTER_FRAMES }
-
-        val left = visible
-            .filter { it.isLeftRegion }
-            .map { OcrLine(it.text, it.left, it.top, it.right, it.bottom, it.locked) }
-            .sortedBy { it.top }
-        val right = visible
-            .filter { !it.isLeftRegion }
-            .map { OcrLine(it.text, it.left, it.top, it.right, it.bottom, it.locked) }
-            .sortedBy { it.top }
-        return left to right
-    }
 }
 
 private fun Context.findActivity(): Activity? {
@@ -400,13 +265,18 @@ fun ScannerScreen(
                         }
                         importing = false
                         val parsed = outcome.getOrNull()
-                        if (parsed != null &&
-                            parsed.matrix.size >= 2 &&
-                            parsed.daemons.isNotEmpty()
-                        ) {
-                            onPuzzleParsed(parsed.matrix, parsed.daemons)
-                        } else {
-                            importMessage = "não consegui ler códigos neste print — tente outra imagem"
+                        when {
+                            parsed == null -> {
+                                importMessage =
+                                    "não consegui ler códigos neste print — tente outra imagem"
+                            }
+                            !parsed.isPlausible() -> {
+                                importMessage =
+                                    "leitura fora do padrão (mais de 6 colunas) — tente outra imagem"
+                            }
+                            else -> {
+                                onPuzzleParsed(parsed.matrix, parsed.daemons)
+                            }
                         }
                     }
                 }
@@ -508,6 +378,16 @@ fun ScannerScreen(
             ) {
                 TextButton(
                     onClick = {
+                        // Recuperação manual: limpa a mira quando uma leitura antiga fica presa.
+                        tracker.reset()
+                        read = null
+                    },
+                    enabled = !importing,
+                ) {
+                    Text("LIMPAR")
+                }
+                TextButton(
+                    onClick = {
                         importLauncher.launch(
                             PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
                         )
@@ -521,14 +401,18 @@ fun ScannerScreen(
                 }
             }
 
+            val readWarning = parsed
+                ?.takeIf { !it.isPlausible() }
+                ?.let {
+                    "leitura fora do padrão (${it.matrix.maxOf { row -> row.size }} colunas) — " +
+                        "reaponte a mira"
+                }
+
             Button(
                 onClick = {
                     parsed?.let { onPuzzleParsed(it.matrix, it.daemons) }
                 },
-                enabled = !importing &&
-                    parsed != null &&
-                    parsed.matrix.size >= 2 &&
-                    parsed.daemons.isNotEmpty(),
+                enabled = !importing && parsed?.isPlausible() == true,
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .safeDrawingPadding()
@@ -537,7 +421,7 @@ fun ScannerScreen(
                 Text("CONFIRMAR LEITURA")
             }
 
-            importMessage?.let { message ->
+            (importMessage ?: readWarning)?.let { message ->
                 Text(
                     text = message,
                     style = MaterialTheme.typography.labelMedium,

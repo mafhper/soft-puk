@@ -19,10 +19,10 @@ data class BreachSolution(
  * - depois alterna coluna/linha, presa à última célula escolhida; sem reutilizar célula;
  * - no máximo [BreachPuzzle.bufferSize] escolhas.
  *
- * Objetivo: maximizar o ganho — soma de pesos 2^índice sobre os daemons habilitados
- * completados ("o último vale mais"; todos quando possível). Um daemon completa
- * quando os códigos dele aparecem como sequência CONTÍGUA no buffer.
- * Desempate: menos cliques; depois ordem lexicográfica determinística.
+ * Objetivo: maximizar o NÚMERO de daemons completados dentro do buffer
+ * ("o máximo de datamine que o buffer comporta"). Empate desempata pelo peso
+ * 2^índice ("o último vale mais", comparação binária do conjunto); depois menos
+ * cliques; depois ordem lexicográfica determinística.
  *
  * Espaço de busca: ≤ ~10^5 caminhos no pior caso (6×6, buffer 10) — roda em ms.
  */
@@ -36,6 +36,7 @@ object BreachSolver {
         val cols = puzzle.cols
         val targets = enabled.sorted().map { it to puzzle.daemons[it].codes }
 
+        var bestCount = -1
         var bestScore = -1
         var bestLen = Int.MAX_VALUE
         var bestPicks: List<Pair<Int, Int>> = emptyList()
@@ -46,15 +47,22 @@ object BreachSolver {
 
         fun evaluate() {
             val buffer = picks.map { puzzle.matrix[it.first][it.second] }
+            var count = 0
             var score = 0
             for ((idx, codes) in targets) {
-                if (buffer.containsRun(codes)) score += 1 shl idx
+                if (buffer.containsRun(codes)) {
+                    count++
+                    score += 1 shl idx
+                }
             }
             val len = picks.size
-            val better = score > bestScore ||
-                (score == bestScore && len < bestLen) ||
-                (score == bestScore && len == bestLen && lexLess(picks, bestPicks))
+            val better = count > bestCount ||
+                (count == bestCount && score > bestScore) ||
+                (count == bestCount && score == bestScore && len < bestLen) ||
+                (count == bestCount && score == bestScore && len == bestLen &&
+                    lexLess(picks, bestPicks))
             if (better) {
+                bestCount = count
                 bestScore = score
                 bestLen = len
                 bestPicks = picks.toList()

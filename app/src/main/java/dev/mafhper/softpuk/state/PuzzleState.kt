@@ -5,6 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import dev.mafhper.softpuk.model.BreachCode
 import dev.mafhper.softpuk.model.BreachPuzzle
+import dev.mafhper.softpuk.model.DEFAULT_BUFFER_SIZE
 import dev.mafhper.softpuk.model.Daemon
 import dev.mafhper.softpuk.model.DemoPuzzle
 import dev.mafhper.softpuk.solver.BreachSolution
@@ -26,6 +27,11 @@ class PuzzleState {
 
     var solution by mutableStateOf<BreachSolution?>(null)
         private set
+
+    companion object {
+        const val MIN_BUFFER_SIZE = 4
+        const val MAX_BUFFER_SIZE = 10
+    }
 
     fun cycleCell(row: Int, col: Int) {
         matrix = matrix.mapIndexed { r, rowCodes ->
@@ -49,7 +55,7 @@ class PuzzleState {
     }
 
     fun updateBufferSize(size: Int) {
-        bufferSize = size.coerceIn(4, 10)
+        bufferSize = size.coerceIn(MIN_BUFFER_SIZE, MAX_BUFFER_SIZE)
     }
 
     fun cycleDaemonCode(di: Int, ci: Int) {
@@ -93,6 +99,16 @@ class PuzzleState {
                 Daemon("DATAMINE_V${i + 1}", codes)
             }
         }
+        // Puzzle novo começa no buffer default (ajustável na confirmação).
+        bufferSize = DEFAULT_BUFFER_SIZE
+        solution = null
+    }
+
+    /** Volta ao puzzle de exemplo — nunca deixa a leitura anterior presa na tela. */
+    fun loadDemo() {
+        matrix = DemoPuzzle.matrix
+        daemons = DemoPuzzle.daemons
+        bufferSize = DEFAULT_BUFFER_SIZE
         solution = null
     }
 

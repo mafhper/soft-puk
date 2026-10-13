@@ -3,8 +3,12 @@ package dev.mafhper.softpuk
 import dev.mafhper.softpuk.model.BreachCode
 import dev.mafhper.softpuk.solver.BreachParser
 import dev.mafhper.softpuk.solver.ParsedCell
+import dev.mafhper.softpuk.solver.ParsedPuzzle
+import dev.mafhper.softpuk.solver.isPlausible
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class BreachParserTest {
@@ -18,6 +22,19 @@ class BreachParserTest {
         assertEquals(BreachCode.C55, BreachParser.codeFor("55"))
         assertNull(BreachParser.codeFor("ZZ"))
         assertNull(BreachParser.codeFor("QW"))
+    }
+
+    @Test
+    fun chromeWordsAreNotCodeTokens() {
+        // "TEMPO RESTANTE DA BRECHA" e "MATRIZ DE CÓDIGOS" — títulos do jogo.
+        assertFalse("DA normalizaria para 7A", BreachParser.looksLikeCodeToken("DA"))
+        assertFalse("DE viraria célula no overlay", BreachParser.looksLikeCodeToken("DE"))
+        assertTrue(BreachParser.looksLikeCodeToken("7A"))
+        assertTrue(BreachParser.looksLikeCodeToken("BD"))
+        assertTrue(BreachParser.looksLikeCodeToken("55"))
+        assertTrue(BreachParser.looksLikeCodeToken("E9"))
+        assertFalse(BreachParser.looksLikeCodeToken("ZZ"))
+        assertFalse(BreachParser.looksLikeCodeToken("12"))
     }
 
     @Test
@@ -100,5 +117,24 @@ class BreachParserTest {
         requireNotNull(parsed)
         assertEquals(3, parsed.matrix[0].size)
         assertEquals(3, parsed.matrix[1].size)
+    }
+
+    @Test
+    fun plausibilityRejectsWideOrEmptyReads() {
+        fun puzzle(
+            width: Int,
+            rows: Int = 5,
+            daemons: List<List<BreachCode>> = listOf(listOf(BreachCode.C1C)),
+        ) = ParsedPuzzle(
+            matrix = List(rows) { List(width) { BreachCode.C1C } },
+            daemons = daemons,
+        )
+
+        assertTrue(puzzle(6).isPlausible())
+        assertTrue(puzzle(5).isPlausible())
+        assertFalse("7 colunas é artefato de rastreio", puzzle(7).isPlausible())
+        assertFalse("7 linhas é artefato de rastreio", puzzle(5, rows = 7).isPlausible())
+        assertFalse("sem daemons não confirma", puzzle(6, daemons = emptyList()).isPlausible())
+        assertFalse("1 linha não é grade", puzzle(5, rows = 1).isPlausible())
     }
 }
