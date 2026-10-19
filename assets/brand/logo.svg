@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  soft-puk — SVG-mãe (fonte editável do set de marca)
+  viewBox 0 0 512 512 · arte dark-first sobre fundo-ink próprio
+
+  ESTRUTURA
+    <g id="symbol">  placa-badge + frame de brackets + grade MATRIX + monograma SP + strip BUFFER
+    <g id="wordmark"> "SOFT-PUK" em paths (glifos angulares próprios, sem <text>)
+
+  REGRA: derivados (logo-dark/light, icon, favicon, mono) se REGENERAM daqui.
+  Nunca editar derivado — editar a mãe e reexportar.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="inkGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#161D14"/>
+      <stop offset="1" stop-color="#0A0D0A"/>
+    </linearGradient>
+    <linearGradient id="limeGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#D4FF3F"/>
+      <stop offset="0.55" stop-color="#B6FF35"/>
+      <stop offset="1" stop-color="#86C91E"/>
+    </linearGradient>
+    <pattern id="mx" width="34" height="34" patternUnits="userSpaceOnUse">
+      <circle cx="5" cy="5" r="3" fill="#B6FF35"/>
+    </pattern>
+    <clipPath id="badgeClip">
+      <rect x="96" y="44" width="320" height="320" rx="60"/>
+    </clipPath>
+  </defs>
+
+  <g id="symbol">
+    <rect x="96" y="44" width="320" height="320" rx="60" fill="url(#inkGrad)"/>
+    <rect x="96" y="44" width="320" height="320" fill="url(#mx)" opacity="0.10" clip-path="url(#badgeClip)"/>
+    <g fill="none" stroke="#B6FF35" stroke-width="14" stroke-linecap="square">
+      <path d="M150 28 H96 Q80 28 80 44 V114"/>
+      <path d="M362 28 H416 Q432 28 432 44 V114"/>
+      <path d="M150 380 H96 Q80 380 80 364 V294"/>
+      <path d="M362 380 H416 Q432 380 432 364 V294"/>
+    </g>
+    <path fill="url(#limeGrad)" d="M140 100h106v26H140z M140 100h26v85h-26z M140 185h106v26H140z M220 185h26v59h-26z M140 218h106v26H140z M266 100h26v144h-26z M266 100h106v26H266z M266 185h106v26H266z M346 100h26v111h-26z"/>
+    <rect x="126" y="280" width="56" height="28" rx="6" fill="url(#limeGrad)"/>
+    <rect x="194" y="280" width="56" height="28" rx="6" fill="none" stroke="#F6E94D" stroke-width="6" stroke-dasharray="10 8"/>
+    <g fill="none" stroke="#6F9B22" stroke-width="5" stroke-dasharray="10 8" opacity="0.85">
+      <rect x="262" y="280" width="56" height="28" rx="6"/>
+      <rect x="330" y="280" width="56" height="28" rx="6"/>
+    </g>
+  </g>
+
+  <g id="wordmark" fill="none" stroke="#E9FFD9" stroke-width="10" stroke-linecap="square" stroke-linejoin="miter">
+    <path d="M121 409 H89 V428 H111 V447 H85"/>
+    <path d="M135 409 H161 V447 H135 Z"/>
+    <path d="M207 409 H181 V447 M181 428 H201"/>
+    <path d="M221 409 H257 M239 409 V447"/>
+    <path d="M268 428 H290"/>
+    <path d="M305 447 V409 H331 V430 H305"/>
+    <path d="M351 409 V447 H377 V409"/>
+    <path d="M397 409 V447 M425 409 L399 430 L425 447"/>
+  </g>
+</svg>

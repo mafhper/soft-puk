@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- soft-puk · favicon.svg — DERIVADO mínimo da mãe (placa + brackets + 2x2 MATRIX, sem letras: legível a 16px). Não editar: regenerar da mãe. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect x="4" y="4" width="56" height="56" rx="14" fill="#0A0D0A"/>
+  <g fill="none" stroke="#B6FF35" stroke-width="5" stroke-linecap="square">
+    <path d="M22 9 H13 Q9 9 9 13 V22"/>
+    <path d="M42 9 H51 Q55 9 55 13 V22"/>
+    <path d="M22 55 H13 Q9 55 9 51 V42"/>
+    <path d="M42 55 H51 Q55 55 55 51 V42"/>
+  </g>
+  <rect x="18" y="24" width="11" height="11" rx="2" fill="#B6FF35"/>
+  <g fill="none" stroke="#6F9B22" stroke-width="2.5">
+    <rect x="34" y="24" width="11" height="11" rx="2"/>
+    <rect x="18" y="39" width="11" height="11" rx="2"/>
+    <rect x="34" y="39" width="11" height="11" rx="2"/>
+  </g>
+</svg>
