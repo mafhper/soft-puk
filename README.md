@@ -1,10 +1,7 @@
 # soft-puk
 
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="assets/brand/logo-dark.svg">
-    <img alt="soft-puk logo" src="assets/brand/logo-light.svg" width="260">
-  </picture>
+  <img alt="soft-puk — leitor de tela e solver do Breach Protocol" src="assets/brand/logo-plate.svg" width="260">
 </p>
 
 Personal Android app that reads the **Breach Protocol** hacking minigame screen

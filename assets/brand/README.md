@@ -16,6 +16,7 @@ click order. Lime-on-dark terminal aesthetic.
 | `logo.svg` | **mother SVG (editable source)** — badge + `SOFT-PUK` wordmark in vector paths | edit here; never edit the files below, regenerate them |
 | `logo-dark.svg` | full lockup for dark surfaces | README header, dark docs |
 | `logo-light.svg` | full lockup for light surfaces (ink + deep-green inks) | light docs, print |
+| `logo-plate.svg` | full lockup on the opaque ink plate (`#0A0D0A`) — one asset, both themes | README header and docs where the surface theme is unknown |
 | `icon.svg` | symbol on its own plate (no wordmark) | app launcher source, avatars |
 | `icon-mono.svg` | one-ink version of the symbol (`currentColor`) | themed icons, stamps, P&B |
 | `favicon.svg` | minimal 2×2 matrix mark, legible at 16 px | tabs, shortcuts |
@@ -38,7 +39,9 @@ dependency, so the files render identically anywhere.
 | Deep Green | `#3E6B12` | brackets on light surfaces |
 
 Light surfaces use `logo-light.svg` — never put the lime lockup on a light
-background.
+background bare. When the surface theme is unknown (a README rendered by the
+host), use `logo-plate.svg`: the ink plate travels with the artwork, so the
+lockup stays legible on light and dark alike.
 
 ## Typography
 
